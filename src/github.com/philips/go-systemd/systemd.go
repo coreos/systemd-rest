@@ -6,7 +6,8 @@ type Systemd1 struct {
 }
 
 type Job struct {
-	Id string `json:"job_id"`
+	Id string `json:"job"`
+	Error string `json:"error"`
 }
 
 func (s *Systemd1) Connect() (err error) {
@@ -28,7 +29,7 @@ func (s *Systemd1) StartUnit(name string, mode string) (job Job, err error) {
 	reply, err := obj.Call("org.freedesktop.systemd1.Manager", "StartUnit",
 		name, mode)
 	if err != nil {
-		return Job{""}, err
+		return Job{"", err.Error()}, err
 	}
 
 	err = reply.GetArgs(&job.Id)
@@ -42,7 +43,7 @@ func (s *Systemd1) StopUnit(name string, mode string) (job Job, err error) {
 	reply, err := obj.Call("org.freedesktop.systemd1.Manager", "StopUnit",
 		name, mode)
 	if err != nil {
-		return Job{""}, err
+		return Job{"", err.Error()}, err
 	}
 
 	err = reply.GetArgs(&job.Id)

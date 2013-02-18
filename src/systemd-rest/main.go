@@ -59,8 +59,7 @@ func unitHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		// TODO: Return 40* code
-		fmt.Fprint(w, err)
+		w.WriteHeader(404)
 	}
 
 	outJson, _ := json.Marshal(out)
