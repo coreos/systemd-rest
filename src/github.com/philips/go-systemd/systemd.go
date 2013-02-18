@@ -5,6 +5,10 @@ type Systemd1 struct {
 	conn   *dbus.Connection
 }
 
+type Job struct {
+	Id string `json:"job_id"`
+}
+
 func (s *Systemd1) Connect() (err error) {
 	conn, err := dbus.Connect(dbus.SystemBus)
 	if err != nil {
@@ -18,11 +22,38 @@ func (s *Systemd1) Connect() (err error) {
 	return err
 }
 
-func (s *Systemd1) StartUnit(name string, mode string) (message string, err error) {
+func (s *Systemd1) StartUnit(name string, mode string) (job Job, err error) {
 	obj := s.conn.Object("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
 
 	reply, err := obj.Call("org.freedesktop.systemd1.Manager", "StartUnit",
 		name, mode)
+	if err != nil {
+		return Job{""}, err
+	}
+
+	err = reply.GetArgs(&job.Id)
+
+	return job, err
+}
+
+func (s *Systemd1) StopUnit(name string, mode string) (job Job, err error) {
+	obj := s.conn.Object("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
+
+	reply, err := obj.Call("org.freedesktop.systemd1.Manager", "StopUnit",
+		name, mode)
+	if err != nil {
+		return Job{""}, err
+	}
+
+	err = reply.GetArgs(&job.Id)
+
+	return job, err
+}
+
+func (s *Systemd1) ListUnits() (message string, err error) {
+	obj := s.conn.Object("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
+
+	reply, err := obj.Call("org.freedesktop.systemd1.Manager", "ListUnits")
 	if err != nil {
 		return "", err
 	}
