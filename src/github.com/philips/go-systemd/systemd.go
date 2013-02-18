@@ -1,6 +1,6 @@
 package systemd
 
-import "github.com/philips/go-dbus"
+import "launchpad.net/go-dbus"
 type Systemd1 struct {
 	conn   *dbus.Connection
 }
@@ -18,23 +18,16 @@ func (s *Systemd1) Connect() (err error) {
 	return err
 }
 
-func (s *Systemd1) StartUnit(name string, mode string) (ret interface{}, err error) {
-	var (
-		method *dbus.Method
-		out    []interface{}
-	)
-
+func (s *Systemd1) StartUnit(name string, mode string) (message string, err error) {
 	obj := s.conn.Object("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
 
-	method, err = obj.Interface("org.freedesktop.systemd1.Manager").Method("StartUnit")
+	reply, err := obj.Call("org.freedesktop.systemd1.Manager", "StartUnit",
+		name, mode)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	out, err = s.conn.Call(method, name, mode)
-	if err != nil {
-		return nil, err
-	}
+	err = reply.GetArgs(&message)
 
-	return out[0], err
+	return message, err
 }
