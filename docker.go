@@ -26,7 +26,10 @@ import (
 	"github.com/dotcloud/docker"
 	"github.com/dotcloud/docker/registry"
 	"github.com/gorilla/mux"
+	"regexp"
 )
+
+const ContainerDir = "/var/lib/containers/"
 
 type Context struct {
 	Path string
@@ -71,7 +74,6 @@ func pullImage(c *Context, imgId, registry string, token []string) error {
 	}
 	return nil
 }
-
 
 // TODO: add tag support
 func pullHandler(w http.ResponseWriter, r *http.Request, c *Context) {
@@ -124,6 +126,70 @@ func pullHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 	fmt.Fprintf(w, "%v\n", repoData)
 }
 
+func createHandler(w http.ResponseWriter, r *http.Request, c *Context) {
+	imageName := r.FormValue("image")
+
+	// TODO: @philips Don't hardcode the tag name here
+	image, err := c.Repositories.GetImage(imageName, "latest")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	if imageName == "" {
+		w.WriteHeader(404)
+		fmt.Fprintf(w, "Cannot find container image: %s", imageName)
+		return
+	}
+
+	// Figure out the resting place of the container
+	vars := mux.Vars(r)
+	container := vars["container"]
+
+	validID := regexp.MustCompile(`^[A-Za-z0-9]+$`)
+	if !validID.MatchString(container) {
+		w.WriteHeader(400)
+		fmt.Fprintf(w, "Invalid container name: %s\n", container)
+		return
+	}
+
+	container = path.Join(ContainerDir, container)
+
+	err = os.Mkdir(container, 0700)
+	if os.IsExist(err) {
+		w.WriteHeader(400)
+		fmt.Fprintf(w, "Existing container: %s\n", container)
+		return
+	}
+	if err != nil {
+		w.WriteHeader(400)
+		fmt.Fprint(w, "Error")
+		log.Fatal(err)
+		return
+	}
+
+	copyAll := func(img *docker.Image) (err error) {
+		tarball, err := image.TarLayer(docker.Uncompressed)
+		if err != nil {
+			return err
+		}
+		if err := docker.Untar(tarball, container); err != nil {
+			return err
+		}
+		return
+	}
+
+	err = image.WalkHistory(copyAll)
+
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	fmt.Fprint(w, "ok")
+	return
+}
+
 func setupDocker(r *mux.Router, o Options) {
 	context.Path = o.Path
 	p := path.Join(context.Path, "containers")
@@ -152,4 +218,5 @@ func setupDocker(r *mux.Router, o Options) {
 	}
 
 	r.HandleFunc("/registry/pull/{remote:.*}", makeHandler(pullHandler))
+	r.HandleFunc("/container/create/{container:.*}", makeHandler(createHandler))
 }
