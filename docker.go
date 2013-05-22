@@ -32,6 +32,7 @@ type Context struct {
 	Path string
 	Registry *registry.Registry
 	Graph *docker.Graph
+	Repositories *docker.TagStore
 }
 
 var context Context
@@ -109,6 +110,17 @@ func pullHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 		}
 	}
 
+	for tag, id := range tagsList {
+		if err := c.Repositories.Set(remote, tag, id, true); err != nil {
+			log.Fatal(err)
+			return
+		}
+	}
+	if err := c.Repositories.Save(); err != nil {
+		log.Fatal(err)
+		return
+	}
+
 	fmt.Fprintf(w, "%v\n", repoData)
 }
 
@@ -128,6 +140,10 @@ func setupDocker(r *mux.Router, o Options) {
 	}
 	g, _ := docker.NewGraph(p)
 	context.Graph = g
+
+	p = path.Join(context.Path, "repositories")
+	t, _ := docker.NewTagStore(p, g)
+	context.Repositories = t
 
 	makeHandler := func(fn func(http.ResponseWriter, *http.Request, *Context)) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
