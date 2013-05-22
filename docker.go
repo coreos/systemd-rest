@@ -72,8 +72,11 @@ func pullImage(c *Context, imgId, registry string, token []string) error {
 }
 
 
+// TODO: add tag support
 func pullHandler(w http.ResponseWriter, r *http.Request, c *Context) {
-	remote := "philips/nova-agent"
+	vars := mux.Vars(r)
+	remote := vars["remote"]
+
 	repoData, err := c.Registry.GetRepositoryData(remote)
 	if err != nil {
 		log.Fatal(err)
@@ -132,5 +135,5 @@ func setupDocker(r *mux.Router, o Options) {
 		}
 	}
 
-	r.HandleFunc("/registry/pull", makeHandler(pullHandler))
+	r.HandleFunc("/registry/pull/{remote:.*}", makeHandler(pullHandler))
 }
