@@ -169,7 +169,8 @@ func createHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 	}
 
 	copyAll := func(img *docker.Image) (err error) {
-		tarball, err := image.TarLayer(docker.Uncompressed)
+		log.Printf("Copying %s into %s", img.Id, container)
+		tarball, err := img.TarLayer(docker.Uncompressed)
 		if err != nil {
 			return err
 		}
