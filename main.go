@@ -18,20 +18,32 @@ package main
 
 import (
 	"log"
+	"flag"
 	"net/http"
 	"github.com/gorilla/mux"
 )
 
 type Options struct {
-	Path string
+	Dir string
 	Port string
 }
 
+var options = Options{}
+
+func init() {
+	const (
+		defaultDir  = "/"
+		defaultPort = "8080"
+	)
+
+	flag.StringVar(&options.Dir, "D", defaultDir, "Directory prefix (default /)")
+	flag.StringVar(&options.Port, "p", defaultPort, "Port to bind to")
+}
+
+const StateDir = "/var/lib/systemd-rest/"
+
 func main() {
-	options := Options{
-		Path: "./",
-		Port: "8080",
-	}
+	flag.Parse()
 
 	r := mux.NewRouter()
 
@@ -44,4 +56,3 @@ func main() {
 		log.Fatal("ListenAndServe: ", err)
 	}
 }
-

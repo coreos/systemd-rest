@@ -59,6 +59,7 @@ func unitHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.Connect()
 	if err != nil {
 		// TODO: Return 40* code
+		w.WriteHeader(404)
 		fmt.Fprint(w, err)
 	}
 

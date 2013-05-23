@@ -33,6 +33,7 @@ const ContainerDir = "/var/lib/containers/"
 
 type Context struct {
 	Path string
+	ContainerPath string
 	Registry *registry.Registry
 	Graph *docker.Graph
 	Repositories *docker.TagStore
@@ -153,7 +154,7 @@ func createHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 		return
 	}
 
-	container = path.Join(ContainerDir, container)
+	container = path.Join(c.ContainerPath, container)
 
 	err = os.Mkdir(container, 0700)
 	if os.IsExist(err) {
@@ -192,15 +193,18 @@ func createHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 }
 
 func setupDocker(r *mux.Router, o Options) {
-	context.Path = o.Path
-	p := path.Join(context.Path, "containers")
-	if err := os.MkdirAll(p, 0700); err != nil && !os.IsExist(err) {
+	// Use the /var/lib/containers directory by default
+	context.ContainerPath = path.Join(o.Dir, ContainerDir)
+	if err := os.MkdirAll(context.ContainerPath, 0700); err != nil && !os.IsExist(err) {
 		log.Fatal(err)
 		return
 	}
-	context.Registry = registry.NewRegistry(p)
+	context.Registry = registry.NewRegistry(context.ContainerPath)
 
-	p = path.Join(context.Path, "graph")
+	// Put all docker images into the docker directory
+	context.Path = path.Join(o.Dir, StateDir, "docker")
+
+	p := path.Join(context.Path, "graph")
 	if err := os.MkdirAll(p, 0700); err != nil && !os.IsExist(err) {
 		log.Fatal(err)
 		return
