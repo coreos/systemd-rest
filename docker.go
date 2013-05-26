@@ -169,19 +169,28 @@ func createHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 		return
 	}
 
-	copyAll := func(img *docker.Image) (err error) {
+	var images []docker.Image
+
+	createList := func(img *docker.Image) (err error) {
+		images = append(images, *img)
+		return
+	}
+	err = image.WalkHistory(createList)
+
+	for i := len(images) - 1; i >= 0; i-- {
+		img := images[i]
 		log.Printf("Copying %s into %s", img.Id, container)
 		tarball, err := img.TarLayer(docker.Uncompressed)
 		if err != nil {
-			return err
+			log.Fatal(err)
+			return
 		}
 		if err := docker.Untar(tarball, container); err != nil {
-			return err
+			log.Fatal(err)
+			return
 		}
 		return
 	}
-
-	err = image.WalkHistory(copyAll)
 
 	if err != nil {
 		log.Fatal(err)
