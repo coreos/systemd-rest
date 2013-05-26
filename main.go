@@ -12,19 +12,19 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
-*/
+ */
 
 package main
 
 import (
-	"log"
 	"flag"
-	"net/http"
 	"github.com/gorilla/mux"
+	"log"
+	"net/http"
 )
 
 type Options struct {
-	Dir string
+	Dir  string
 	Port string
 }
 
@@ -51,7 +51,7 @@ func main() {
 	setupDocker(r.PathPrefix("/docker").Subrouter(), options)
 
 	http.Handle("/", r)
-	err := http.ListenAndServe(":" + options.Port, nil)
+	err := http.ListenAndServe(":"+options.Port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}

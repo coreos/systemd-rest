@@ -13,16 +13,16 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
-*/
+ */
 
 package main
 
 import (
-	"fmt"
-	"net/http"
 	"encoding/json"
-	"github.com/philips/go-systemd"
+	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/philips/go-systemd"
+	"net/http"
 )
 
 func listHandler(w http.ResponseWriter, r *http.Request) {

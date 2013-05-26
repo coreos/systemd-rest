@@ -13,30 +13,30 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
-*/
+ */
 
 package main
 
 import (
-	"os"
-	"path"
 	"fmt"
-	"log"
-	"net/http"
 	"github.com/dotcloud/docker"
 	"github.com/dotcloud/docker/registry"
 	"github.com/gorilla/mux"
+	"log"
+	"net/http"
+	"os"
+	"path"
 	"regexp"
 )
 
 const ContainerDir = "/var/lib/containers/"
 
 type Context struct {
-	Path string
+	Path          string
 	ContainerPath string
-	Registry *registry.Registry
-	Graph *docker.Graph
-	Repositories *docker.TagStore
+	Registry      *registry.Registry
+	Graph         *docker.Graph
+	Repositories  *docker.TagStore
 }
 
 var context Context
