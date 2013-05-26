@@ -177,7 +177,7 @@ func createHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 	}
 	err = image.WalkHistory(createList)
 
-	for i := len(images) - 1; i >= 0; i-- {
+	for i := len(images) - 1; i > 0; i-- {
 		img := images[i]
 		log.Printf("Copying %s into %s", img.Id, container)
 		tarball, err := img.TarLayer(docker.Uncompressed)
@@ -189,7 +189,6 @@ func createHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 			log.Fatal(err)
 			return
 		}
-		return
 	}
 
 	if err != nil {
