@@ -30,6 +30,8 @@ import (
 )
 
 const ContainerDir = "/var/lib/containers/"
+const UnitTemplate = "/usr/lib/systemd/system/etcd@.service"
+const UnitTargetFormat = "/etc/systemd/system/etcd@%s.service"
 
 type Context struct {
 	Path          string
@@ -193,6 +195,15 @@ func createHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 
 	if err != nil {
 		log.Fatal(err)
+		return
+	}
+
+	// Symlink in the unit file so it can be started
+	target := fmt.Sprintf(UnitTargetFormat, vars["container"])
+	err = os.Symlink(UnitTemplate, target)
+
+	if err != nil {
+		fmt.Fprintf(w, "%s", err)
 		return
 	}
 
