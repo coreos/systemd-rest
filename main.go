@@ -49,6 +49,7 @@ func main() {
 
 	setupUnits(r.PathPrefix("/units").Subrouter(), options)
 	setupDocker(r.PathPrefix("/docker").Subrouter(), options)
+	setupUpdate(r.PathPrefix("/update").Subrouter(), options)
 
 	http.Handle("/", r)
 	err := http.ListenAndServe(":"+options.Port, nil)
