@@ -54,19 +54,19 @@ func pullImage(c *Context, imgId, registry string, token []string) error {
 	for _, id := range history {
 		if !c.Graph.Exists(id) {
 			log.Printf("Pulling %s metadata\r\n", id)
-			imgJson, err := c.Registry.GetRemoteImageJson(id, registry, token)
+			imgJson, err := c.Registry.GetRemoteImageJSON(id, registry, token)
 			if err != nil {
 				// FIXME: Keep goging in case of error?
 				return err
 			}
-			img, err := docker.NewImgJson(imgJson)
+			img, err := docker.NewImgJSON(imgJson)
 			if err != nil {
 				return fmt.Errorf("Failed to parse json: %s", err)
 			}
 
 			// Get the layer
-			log.Printf("Pulling %s fs layer\r\n", img.Id)
-			layer, _, err := c.Registry.GetRemoteImageLayer(img.Id, registry, token)
+			log.Printf("Pulling %s fs layer\r\n", img.ID)
+			layer, _, err := c.Registry.GetRemoteImageLayer(img.ID, registry, token)
 			if err != nil {
 				return err
 			}
@@ -98,11 +98,11 @@ func pullHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 	}
 
 	for _, img := range repoData.ImgList {
-		log.Printf("Pulling image %s (%s) from %s\n", img.Id, img.Tag, remote)
+		log.Printf("Pulling image %s (%s) from %s\n", img.ID, img.Tag, remote)
 		success := false
 
 		for _, ep := range repoData.Endpoints {
-			if err := pullImage(c, img.Id, "https://"+ep+"/v1", repoData.Tokens); err != nil {
+			if err := pullImage(c, img.ID, "https://"+ep+"/v1", repoData.Tokens); err != nil {
 				fmt.Printf("Error while retrieving image for tag: %s; checking next endpoint\n", err)
 				continue
 			}
@@ -181,7 +181,7 @@ func createHandler(w http.ResponseWriter, r *http.Request, c *Context) {
 
 	for i := len(images) - 1; i >= 0; i-- {
 		img := images[i]
-		log.Printf("Copying %s into %s", img.Id, container)
+		log.Printf("Copying %s into %s", img.ID, container)
 		tarball, err := img.TarLayer(docker.Uncompressed)
 		if err != nil {
 			log.Fatal(err)
@@ -218,7 +218,7 @@ func setupDocker(r *mux.Router, o Options) {
 		log.Fatal(err)
 		return
 	}
-	context.Registry = registry.NewRegistry(context.ContainerPath)
+	context.Registry = registry.NewRegistry(context.ContainerPath, nil)
 
 	// Put all docker images into the docker directory
 	context.Path = path.Join(o.Dir, StateDir, "docker")

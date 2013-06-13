@@ -12,12 +12,6 @@ import (
 	"strings"
 )
 
-type BuilderClient interface {
-	Build(io.Reader) (string, error)
-	CmdFrom(string) error
-	CmdRun(string) error
-}
-
 type builderClient struct {
 	cli *DockerCli
 
@@ -69,11 +63,11 @@ func (b *builderClient) CmdFrom(name string) error {
 		return err
 	}
 
-	img := &ApiId{}
+	img := &APIID{}
 	if err := json.Unmarshal(obj, img); err != nil {
 		return err
 	}
-	b.image = img.Id
+	b.image = img.ID
 	utils.Debugf("Using image %s", b.image)
 	return nil
 }
@@ -97,19 +91,19 @@ func (b *builderClient) CmdRun(args string) error {
 	b.config.Cmd = nil
 	MergeConfig(b.config, config)
 
-	body, statusCode, err := b.cli.call("POST", "/images/getCache", &ApiImageConfig{Id: b.image, Config: b.config})
+	body, statusCode, err := b.cli.call("POST", "/images/getCache", &APIImageConfig{ID: b.image, Config: b.config})
 	if err != nil {
 		if statusCode != 404 {
 			return err
 		}
 	}
 	if statusCode != 404 {
-		apiId := &ApiId{}
-		if err := json.Unmarshal(body, apiId); err != nil {
+		apiID := &APIID{}
+		if err := json.Unmarshal(body, apiID); err != nil {
 			return err
 		}
 		utils.Debugf("Use cached version")
-		b.image = apiId.Id
+		b.image = apiID.ID
 		return nil
 	}
 	cid, err := b.run()
@@ -158,8 +152,23 @@ func (b *builderClient) CmdExpose(args string) error {
 }
 
 func (b *builderClient) CmdInsert(args string) error {
-	// FIXME: Reimplement this once the remove_hijack branch gets merged.
-	// We need to retrieve the resulting Id
+	// tmp := strings.SplitN(args, "\t ", 2)
+	// sourceUrl, destPath := tmp[0], tmp[1]
+
+	// v := url.Values{}
+	// v.Set("url", sourceUrl)
+	// v.Set("path", destPath)
+	// body, _, err := b.cli.call("POST", "/images/insert?"+v.Encode(), nil)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// apiId := &APIId{}
+	// if err := json.Unmarshal(body, apiId); err != nil {
+	// 	return err
+	// }
+
+	// FIXME: Reimplement this, we need to retrieve the resulting Id
 	return fmt.Errorf("INSERT not implemented")
 }
 
@@ -173,7 +182,7 @@ func (b *builderClient) run() (string, error) {
 		return "", err
 	}
 
-	apiRun := &ApiRun{}
+	apiRun := &APIRun{}
 	if err := json.Unmarshal(body, apiRun); err != nil {
 		return "", err
 	}
@@ -182,18 +191,18 @@ func (b *builderClient) run() (string, error) {
 	}
 
 	//start the container
-	_, _, err = b.cli.call("POST", "/containers/"+apiRun.Id+"/start", nil)
+	_, _, err = b.cli.call("POST", "/containers/"+apiRun.ID+"/start", nil)
 	if err != nil {
 		return "", err
 	}
-	b.tmpContainers[apiRun.Id] = struct{}{}
+	b.tmpContainers[apiRun.ID] = struct{}{}
 
 	// Wait for it to finish
-	body, _, err = b.cli.call("POST", "/containers/"+apiRun.Id+"/wait", nil)
+	body, _, err = b.cli.call("POST", "/containers/"+apiRun.ID+"/wait", nil)
 	if err != nil {
 		return "", err
 	}
-	apiWait := &ApiWait{}
+	apiWait := &APIWait{}
 	if err := json.Unmarshal(body, apiWait); err != nil {
 		return "", err
 	}
@@ -201,7 +210,7 @@ func (b *builderClient) run() (string, error) {
 		return "", fmt.Errorf("The command %v returned a non-zero code: %d", b.config.Cmd, apiWait.StatusCode)
 	}
 
-	return apiRun.Id, nil
+	return apiRun.ID, nil
 }
 
 func (b *builderClient) commit(id string) error {
@@ -213,11 +222,11 @@ func (b *builderClient) commit(id string) error {
 	if id == "" {
 		cmd := b.config.Cmd
 		b.config.Cmd = []string{"true"}
-		if cid, err := b.run(); err != nil {
+		cid, err := b.run()
+		if err != nil {
 			return err
-		} else {
-			id = cid
 		}
+		id = cid
 		b.config.Cmd = cmd
 	}
 
@@ -230,17 +239,17 @@ func (b *builderClient) commit(id string) error {
 	if err != nil {
 		return err
 	}
-	apiId := &ApiId{}
-	if err := json.Unmarshal(body, apiId); err != nil {
+	apiID := &APIID{}
+	if err := json.Unmarshal(body, apiID); err != nil {
 		return err
 	}
-	b.tmpImages[apiId.Id] = struct{}{}
-	b.image = apiId.Id
+	b.tmpImages[apiID.ID] = struct{}{}
+	b.image = apiID.ID
 	b.needCommit = false
 	return nil
 }
 
-func (b *builderClient) Build(dockerfile io.Reader) (string, error) {
+func (b *builderClient) Build(dockerfile, context io.Reader) (string, error) {
 	defer b.clearTmp(b.tmpContainers, b.tmpImages)
 	file := bufio.NewReader(dockerfile)
 	for {
@@ -263,18 +272,18 @@ func (b *builderClient) Build(dockerfile io.Reader) (string, error) {
 		instruction := strings.ToLower(strings.Trim(tmp[0], " "))
 		arguments := strings.Trim(tmp[1], " ")
 
-		fmt.Printf("%s %s (%s)\n", strings.ToUpper(instruction), arguments, b.image)
+		fmt.Fprintf(os.Stderr, "%s %s (%s)\n", strings.ToUpper(instruction), arguments, b.image)
 
 		method, exists := reflect.TypeOf(b).MethodByName("Cmd" + strings.ToUpper(instruction[:1]) + strings.ToLower(instruction[1:]))
 		if !exists {
-			fmt.Printf("Skipping unknown instruction %s\n", strings.ToUpper(instruction))
+			fmt.Fprintf(os.Stderr, "Skipping unknown instruction %s\n", strings.ToUpper(instruction))
 		}
 		ret := method.Func.Call([]reflect.Value{reflect.ValueOf(b), reflect.ValueOf(arguments)})[0].Interface()
 		if ret != nil {
 			return "", ret.(error)
 		}
 
-		fmt.Printf("===> %v\n", b.image)
+		fmt.Fprintf(os.Stderr, "===> %v\n", b.image)
 	}
 	if b.needCommit {
 		if err := b.commit(""); err != nil {
@@ -289,13 +298,13 @@ func (b *builderClient) Build(dockerfile io.Reader) (string, error) {
 		for i := range b.tmpContainers {
 			delete(b.tmpContainers, i)
 		}
-		fmt.Printf("Build finished. image id: %s\n", b.image)
+		fmt.Fprintf(os.Stderr, "Build finished. image id: %s\n", b.image)
 		return b.image, nil
 	}
 	return "", fmt.Errorf("An error occured during the build\n")
 }
 
-func NewBuilderClient(addr string, port int) BuilderClient {
+func NewBuilderClient(addr string, port int) BuildFile {
 	return &builderClient{
 		cli:           NewDockerCli(addr, port),
 		config:        &Config{},

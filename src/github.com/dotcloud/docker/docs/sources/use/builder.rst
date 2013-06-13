@@ -18,7 +18,7 @@ steps and commit them along the way, giving you a final image.
 To use Docker Builder, assemble the steps into a text file (commonly referred to
 as a Dockerfile) and supply this to `docker build` on STDIN, like so:
 
-    ``docker build < Dockerfile``
+    ``docker build - < Dockerfile``
 
 Docker will run your steps one-by-one, committing the result if necessary, 
 before finally outputting the ID of your new image.
@@ -125,8 +125,14 @@ curl was installed within the image.
 .. note::
     The path must include the file name.
 
-.. note::
-    This instruction has temporarily disabled
+2.8 ADD
+-------
+
+    ``ADD <src> <dest>``
+
+The `ADD` instruction will insert the files from the `<src>` path of the context into `<dest>` path 
+of the container.
+The context must be set in order to use this instruction. (see examples)
 
 3. Dockerfile Examples
 ======================

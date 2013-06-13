@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -15,7 +16,13 @@ import (
 const CONFIGFILE = ".dockercfg"
 
 // the registry server we want to login against
-const INDEX_SERVER = "https://index.docker.io/v1"
+const INDEXSERVER = "https://index.docker.io/v1"
+
+//const INDEXSERVER = "http://indexstaging-docker.dotcloud.com/"
+
+var (
+	ErrConfigFileMissing = errors.New("The Auth config file is missing")
+)
 
 type AuthConfig struct {
 	Username string `json:"username"`
@@ -37,11 +44,11 @@ func IndexServerAddress() string {
 	if os.Getenv("DOCKER_INDEX_URL") != "" {
 		return os.Getenv("DOCKER_INDEX_URL") + "/v1"
 	}
-	return INDEX_SERVER
+	return INDEXSERVER
 }
 
 // create a base64 encoded auth string to store in config
-func EncodeAuth(authConfig *AuthConfig) string {
+func encodeAuth(authConfig *AuthConfig) string {
 	authStr := authConfig.Username + ":" + authConfig.Password
 	msg := []byte(authStr)
 	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(msg)))
@@ -50,7 +57,7 @@ func EncodeAuth(authConfig *AuthConfig) string {
 }
 
 // decode the auth string
-func DecodeAuth(authStr string) (*AuthConfig, error) {
+func decodeAuth(authStr string) (*AuthConfig, error) {
 	decLen := base64.StdEncoding.DecodedLen(len(authStr))
 	decoded := make([]byte, decLen)
 	authByte := []byte(authStr)
@@ -75,7 +82,7 @@ func DecodeAuth(authStr string) (*AuthConfig, error) {
 func LoadConfig(rootPath string) (*AuthConfig, error) {
 	confFile := path.Join(rootPath, CONFIGFILE)
 	if _, err := os.Stat(confFile); err != nil {
-		return &AuthConfig{}, fmt.Errorf("The Auth config file is missing")
+		return &AuthConfig{rootPath:rootPath}, ErrConfigFileMissing
 	}
 	b, err := ioutil.ReadFile(confFile)
 	if err != nil {
@@ -87,7 +94,7 @@ func LoadConfig(rootPath string) (*AuthConfig, error) {
 	}
 	origAuth := strings.Split(arr[0], " = ")
 	origEmail := strings.Split(arr[1], " = ")
-	authConfig, err := DecodeAuth(origAuth[1])
+	authConfig, err := decodeAuth(origAuth[1])
 	if err != nil {
 		return nil, err
 	}
@@ -97,13 +104,13 @@ func LoadConfig(rootPath string) (*AuthConfig, error) {
 }
 
 // save the auth config
-func saveConfig(rootPath, authStr string, email string) error {
-	confFile := path.Join(rootPath, CONFIGFILE)
-	if len(email) == 0 {
+func SaveConfig(authConfig *AuthConfig) error {
+	confFile := path.Join(authConfig.rootPath, CONFIGFILE)
+	if len(authConfig.Email) == 0 {
 		os.Remove(confFile)
 		return nil
 	}
-	lines := "auth = " + authStr + "\n" + "email = " + email + "\n"
+	lines := "auth = " + encodeAuth(authConfig) + "\n" + "email = " + authConfig.Email + "\n"
 	b := []byte(lines)
 	err := ioutil.WriteFile(confFile, b, 0600)
 	if err != nil {
@@ -113,7 +120,7 @@ func saveConfig(rootPath, authStr string, email string) error {
 }
 
 // try to register/login to the registry server
-func Login(authConfig *AuthConfig) (string, error) {
+func Login(authConfig *AuthConfig, store bool) (string, error) {
 	storeConfig := false
 	client := &http.Client{}
 	reqStatusCode := 0
@@ -161,7 +168,11 @@ func Login(authConfig *AuthConfig) (string, error) {
 				status = "Login Succeeded\n"
 				storeConfig = true
 			} else if resp.StatusCode == 401 {
-				saveConfig(authConfig.rootPath, "", "")
+				if store {
+					if err := SaveConfig(authConfig); err != nil {
+						return "", err
+					}
+				}
 				return "", fmt.Errorf("Wrong login/password, please try again")
 			} else {
 				return "", fmt.Errorf("Login: %s (Code: %d; Headers: %s)", body,
@@ -173,9 +184,10 @@ func Login(authConfig *AuthConfig) (string, error) {
 	} else {
 		return "", fmt.Errorf("Unexpected status code [%d] : %s", reqStatusCode, reqBody)
 	}
-	if storeConfig {
-		authStr := EncodeAuth(authConfig)
-		saveConfig(authConfig.rootPath, authStr, authConfig.Email)
+	if storeConfig && store {
+		if err := SaveConfig(authConfig); err != nil {
+			return "", err
+		}
 	}
 	return status, nil
 }

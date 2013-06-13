@@ -6,6 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
+PYTHON        = python
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
@@ -38,17 +39,19 @@ help:
 #	@echo "  linkcheck  to check all external links for integrity"
 #	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 	@echo "  docs       to build the docs and copy the static files to the outputdir"
+	@echo "  server     to serve the docs in your browser under \`http://localhost:8000\`"
 	@echo "  publish    to publish the app to dotcloud"
 
 clean:
 	-rm -rf $(BUILDDIR)/*
 
 docs:
-	#-rm -rf $(BUILDDIR)/*
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The documentation pages are now in $(BUILDDIR)/html."
 
+server: docs
+	@cd $(BUILDDIR)/html; $(PYTHON) -m SimpleHTTPServer 8000
 
 site:
 	cp -r website $(BUILDDIR)/
@@ -58,12 +61,13 @@ site:
 
 connect:
 	@echo connecting dotcloud to www.docker.io website, make sure to use user 1
-	@cd _build/website/ ; \
-	dotcloud connect dockerwebsite ;
+	@echo or create your own "dockerwebsite" app
+	@cd $(BUILDDIR)/website/ ; \
+	dotcloud connect dockerwebsite ; \
 	dotcloud list
 
 push:
-	@cd _build/website/ ; \
+	@cd $(BUILDDIR)/website/ ; \
 	dotcloud push
 
 $(VERSIONS):

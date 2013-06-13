@@ -2,16 +2,17 @@
 :description: docker documentation
 :keywords: docker, ipa, documentation
 
-API's
-=============
+APIs
+====
 
-This following :
+Your programs and scripts can access Docker's functionality via these interfaces:
 
 .. toctree::
   :maxdepth: 3
 
+  registry_index_spec
   registry_api
-  index_search_api
+  index_api
   docker_remote_api
 
 
